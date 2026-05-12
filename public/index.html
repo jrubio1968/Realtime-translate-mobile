@@ -292,14 +292,14 @@
         stopBtn.disabled = false;
       } catch (error) {
         console.error(error);
+        await stop(true);
         setStatus(error.message || 'No se pudo iniciar');
-        await stop();
       } finally {
         startBtn.disabled = false;
       }
     }
 
-    async function stop() {
+    async function stop(preserveStatus = false) {
       if (dc) {
         dc.close();
         dc = null;
@@ -315,7 +315,9 @@
       }
       remoteAudio.srcObject = null;
       stopBtn.disabled = true;
-      setStatus('Desconectado');
+      if (!preserveStatus) {
+        setStatus('Desconectado');
+      }
     }
 
     startBtn.addEventListener('click', start);
