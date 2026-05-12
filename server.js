@@ -61,18 +61,10 @@ async function createClientSecret(req, res) {
   }
 
   const targetLanguage = body.targetLanguage || 'es';
-  const sourceLanguage = body.sourceLanguage || 'en';
-
   const payload = {
     session: {
       model: 'gpt-realtime-translate',
       audio: {
-        input: {
-          transcription: {
-            model: 'gpt-realtime-whisper',
-            language: sourceLanguage,
-          },
-        },
         output: {
           language: targetLanguage,
         },
