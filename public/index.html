@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nilo Translate</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #131a31;
+      --panel-2: #1b2445;
+      --text: #eef2ff;
+      --muted: #aeb7d8;
+      --accent: #6ea8fe;
+      --accent-2: #7ef0c4;
+      --danger: #ff7b8a;
+      --border: rgba(255,255,255,.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(180deg, #09101e 0%, #111a33 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .card {
+      background: rgba(19,26,49,.9);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.6rem;
+    }
+    p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    label {
+      display: block;
+      font-size: .92rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    select, button {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 14px;
+      font-size: 1rem;
+    }
+    button {
+      border: 0;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .primary { background: linear-gradient(135deg, var(--accent), #4f7cff); }
+    .secondary { background: #28345f; }
+    .danger { background: linear-gradient(135deg, #ff758f, var(--danger)); }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: .95rem;
+      color: var(--muted);
+    }
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #5b6488;
+    }
+    .live { background: var(--accent-2); box-shadow: 0 0 12px rgba(126,240,196,.8); }
+    .transcript {
+      min-height: 140px;
+      white-space: pre-wrap;
+      line-height: 1.55;
+      font-size: 1.02rem;
+    }
+    .source {
+      color: #b8c2e8;
+      opacity: .92;
+    }
+    .translated {
+      color: #f7fbff;
+      font-weight: 600;
+    }
+    .small {
+      font-size: .86rem;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+    audio { width: 100%; margin-top: 8px; }
+    @media (max-width: 640px) {
+      .grid, .actions { grid-template-columns: 1fr; }
+      h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Nilo Translate</h1>
+      <p>Traductor de voz en tiempo real para móvil. Piensa en esto como un prototipo serio, no un juguete de feria.</p>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label for="sourceLanguage">Idioma que escuchas</label>
+          <select id="sourceLanguage">
+            <option value="en" selected>Inglés</option>
+            <option value="es">Español</option>
+            <option value="fr">Francés</option>
+            <option value="de">Alemán</option>
+            <option value="it">Italiano</option>
+            <option value="pt">Portugués</option>
+          </select>
+        </div>
+        <div>
+          <label for="targetLanguage">Idioma que quieres oír</label>
+          <select id="targetLanguage">
+            <option value="es" selected>Español</option>
+            <option value="en">Inglés</option>
+            <option value="fr">Francés</option>
+            <option value="de">Alemán</option>
+            <option value="it">Italiano</option>
+            <option value="pt">Portugués</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="startBtn" class="primary">Iniciar traducción</button>
+        <button id="stopBtn" class="danger" disabled>Detener</button>
+      </div>
+      <div class="small">En iPhone o Android necesitarás abrir esto con HTTPS o desde localhost para que el micro funcione.</div>
+    </div>
+
+    <div class="card">
+      <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Desconectado</span></div>
+      <audio id="remoteAudio" autoplay playsinline controls></audio>
+    </div>
+
+    <div class="card">
+      <label>Texto original</label>
+      <div id="sourceTranscript" class="transcript source"></div>
+    </div>
+
+    <div class="card">
+      <label>Traducción</label>
+      <div id="translatedTranscript" class="transcript translated"></div>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusText = document.getElementById('statusText');
+    const statusDot = document.getElementById('statusDot');
+    const sourceLanguage = document.getElementById('sourceLanguage');
+    const targetLanguage = document.getElementById('targetLanguage');
+    const sourceTranscript = document.getElementById('sourceTranscript');
+    const translatedTranscript = document.getElementById('translatedTranscript');
+    const remoteAudio = document.getElementById('remoteAudio');
+
+    let pc;
+    let dc;
+    let localStream;
+
+    function setStatus(text, isLive = false) {
+      statusText.textContent = text;
+      statusDot.className = isLive ? 'dot live' : 'dot';
+    }
+
+    function appendText(el, text) {
+      el.textContent += text;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function resetTranscripts() {
+      sourceTranscript.textContent = '';
+      translatedTranscript.textContent = '';
+    }
+
+    async function start() {
+      startBtn.disabled = true;
+      setStatus('Pidiendo acceso al micrófono...');
+      resetTranscripts();
+
+      try {
+        const sessionRes = await fetch('/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceLanguage: sourceLanguage.value,
+            targetLanguage: targetLanguage.value,
+          }),
+        });
+
+        const sessionData = await sessionRes.json();
+        if (!sessionRes.ok) {
+          throw new Error(sessionData.error?.message || sessionData.error || 'No se pudo crear la sesión.');
+        }
+
+        const clientSecret = sessionData.value || sessionData.client_secret?.value;
+        if (!clientSecret) {
+          throw new Error('OpenAI no devolvió client secret.');
+        }
+
+        localStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+
+        pc = new RTCPeerConnection();
+        pc.addTrack(localStream.getAudioTracks()[0], localStream);
+
+        pc.ontrack = (event) => {
+          remoteAudio.srcObject = event.streams[0];
+        };
+
+        dc = pc.createDataChannel('oai-events');
+        dc.onmessage = (event) => {
+          const msg = JSON.parse(event.data);
+
+          if (msg.type === 'session.output_transcript.delta') {
+            appendText(translatedTranscript, msg.delta || '');
+          }
+
+          if (msg.type === 'conversation.item.input_audio_transcription.delta') {
+            appendText(sourceTranscript, msg.delta || '');
+          }
+
+          if (msg.type === 'conversation.item.input_audio_transcription.completed') {
+            appendText(sourceTranscript, '\n');
+          }
+
+          if (msg.type === 'session.output_transcript.completed') {
+            appendText(translatedTranscript, '\n');
+          }
+
+          if (msg.type === 'error') {
+            console.error(msg);
+            setStatus('Error: ' + (msg.error?.message || 'desconocido'));
+          }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const sdpResponse = await fetch('https://api.openai.com/v1/realtime/translations/calls', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${clientSecret}`,
+            'Content-Type': 'application/sdp',
+          },
+          body: offer.sdp,
+        });
+
+        if (!sdpResponse.ok) {
+          throw new Error(await sdpResponse.text());
+        }
+
+        const answerSdp = await sdpResponse.text();
+        await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+        setStatus('Traduciendo en directo', true);
+        stopBtn.disabled = false;
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || 'No se pudo iniciar');
+        await stop();
+      } finally {
+        startBtn.disabled = false;
+      }
+    }
+
+    async function stop() {
+      if (dc) {
+        dc.close();
+        dc = null;
+      }
+      if (pc) {
+        pc.getSenders().forEach((sender) => sender.track && sender.track.stop());
+        pc.close();
+        pc = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+        localStream = null;
+      }
+      remoteAudio.srcObject = null;
+      stopBtn.disabled = true;
+      setStatus('Desconectado');
+    }
+
+    startBtn.addEventListener('click', start);
+    stopBtn.addEventListener('click', stop);
+  </script>
+</body>
+</html>
